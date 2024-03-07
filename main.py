@@ -1,18 +1,19 @@
 import cv2
 import mediapipe as mp
 import csv
+import copy
+import itertools
 
-# open the file in the write mode
-f = open('landmarks.csv', 'w')
+
+
+# write a row to the csv file
+
+ # open the file in the write mode
+f = open('landmarks.csv', 'w', newline='')
 
 # create the csv writer
 writer = csv.writer(f)
 
-# write a row to the csv file
-
-
-# close the file
-# f.close()
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -22,6 +23,8 @@ my_drawing_specs = mp_drawing.DrawingSpec(color = (0, 255, 0), thickness = 1)
 cap = cv2.VideoCapture(0)
 
 mp_face_mesh = mp.solutions.face_mesh
+
+
 def calc_landmark_list(image, landmarks):
     image_width, image_height = image.shape[1], image.shape[0]
 
@@ -36,6 +39,32 @@ def calc_landmark_list(image, landmarks):
         landmark_point.append([landmark_x, landmark_y])
 
     return landmark_point
+
+
+def pre_process_landmark(landmark_list):
+    temp_landmark_list = copy.deepcopy(landmark_list)
+
+    # Convert to relative coordinates
+    base_x, base_y = 0, 0
+    for index, landmark_point in enumerate(temp_landmark_list):
+        if index == 0:
+            base_x, base_y = landmark_point[0], landmark_point[1]
+
+        temp_landmark_list[index][0] = temp_landmark_list[index][0] - base_x
+        temp_landmark_list[index][1] = temp_landmark_list[index][1] - base_y
+
+    # Convert to a one-dimensional list
+    temp_landmark_list = list(
+        itertools.chain.from_iterable(temp_landmark_list))
+
+    # Normalization
+    max_value = max(list(map(abs, temp_landmark_list)))
+
+    def normalize_(n):
+        return n / max_value
+
+    
+
 #setting the max faces and confidence levels
 with mp_face_mesh.FaceMesh(
         max_num_faces = 1,
@@ -60,6 +89,8 @@ with mp_face_mesh.FaceMesh(
                 # print(face_landmarks.landmark)
                 #print the coorinates every landmarks
                 landmark_list = calc_landmark_list(image, face_landmarks)
+                # landmark_list = pre_process_landmark(landmark_list)
+               
                 writer.writerow(landmark_list)
 
                 # Print the coordinates
